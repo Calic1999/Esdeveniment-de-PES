@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Dec 26 12:50:19 2022
+
+@author: rogerprat
+"""
+
+import matplotlib.pyplot as plt
+
+mp = 1.67262192369E-27
+kB = 1.3806504E-23
+
+#Reading files
+filename = "/Users/rogerprat/Documents/SynologyDrive/Màster/Space-based astronomy and Space Weather/2-Meteo/Esdeveniment/dades/wind_swe_2m_bhw5zaBDsN.lst.txt"
+WIND = open(filename,"r")
+WIND_DATA = []
+for line in WIND:
+    stripped = line.strip()
+    DATA = stripped.split(' ')
+    while("" in DATA):
+        DATA.remove("")
+    DATA[0] = int(DATA[0])
+    for i in range(1,len(DATA)):
+        DATA[i] = float(DATA[i])
+    DATA[3] = (mp*(DATA[3]*1000)**2/(2*kB))/100000
+    WIND_DATA.append(DATA)
+WIND.close()
+
+filename = "/Users/rogerprat/Documents/SynologyDrive/Màster/Space-based astronomy and Space Weather/2-Meteo/Esdeveniment/dades/ACE_EPAM_Data-3.txt"
+ACE = open(filename,"r")
+ACE_DATA=[]
+read = False
+for line in ACE:
+    if read:
+        stripped = line.strip()
+        DATA = stripped.split(' ')
+        while("" in DATA):
+            DATA.remove("")
+        for i in range(len(DATA)):
+            DATA[i] = float(DATA[i])
+        ACE_DATA.append(DATA)
+    if line == 'BEGIN DATA\n':
+        read = True
+ACE.close()
+
+filename = "/Users/rogerprat/Documents/SynologyDrive/Màster/Space-based astronomy and Space Weather/2-Meteo/Esdeveniment/dades/SEPEM_RD_24February2014SEPevent.txt"
+SEPEM = open(filename,"r")
+SEPEM_DATA=[]
+read = False
+read2 = False
+for line in SEPEM:
+    if read and read2:
+        stripped = line.strip()
+        splitted = stripped.split(',')
+        DATA=[]
+        for value in splitted:
+            DATA.append(value.strip())
+        DATE= DATA[0].split(' ')
+        Any,Mes,Dia = DATE[0].split('-')
+        Hora,Minut,Segon = DATE[1].split(':')
+        DOY = 31 + int(Dia) + int(Hora)/24 + int(Minut)/(24*60) + int(Segon)/(24*3600)
+        if Mes=='03':
+            DOY += 28
+        DATA[0] = DOY
+        for i in range(1,len(DATA)):
+            DATA[i] = float(DATA[i])
+        SEPEM_DATA.append(DATA)
+    if read:
+        read2 = True
+    if line == '200.0 -289.2  MeV\n':
+        read = True
+SEPEM.close()
+
+
+year,WIND_doy,v,T,d,Bx,By,Bz = zip(*WIND_DATA)
+ACE_doy,P1,P2,P3,P4,P5,P6,P7,P8 = zip(*ACE_DATA)
+SEPAM_doy,interval,P9,P10,P11,P12,P13,P14,P15,P16,P17,P18,P19 = zip(*SEPEM_DATA)
+
+
+#Remove bad data from ACE
+def BadACE(DOY,PF):
+    DOY = list(DOY)
+    PF = list(PF)
+    N = len(DOY)
+    index = []
+    for i in range(N):
+        if PF[i]==-999.9:
+            index.append(i)
+    j = 0
+    for i in range(len(index)):
+        index[i] -= j
+        DOY.pop(index[i])
+        PF.pop(index[i])
+        j += 1
+    return tuple(DOY),tuple(PF)
+
+ACE_doy_1,P1 = BadACE(ACE_doy,P1)
+ACE_doy_2,P2 = BadACE(ACE_doy,P2)
+ACE_doy_3,P3 = BadACE(ACE_doy,P3)
+ACE_doy_4,P4 = BadACE(ACE_doy,P4)
+ACE_doy_5,P5 = BadACE(ACE_doy,P5)
+ACE_doy_6,P6 = BadACE(ACE_doy,P6)
+ACE_doy_7,P7 = BadACE(ACE_doy,P7)
+ACE_doy_8,P8 = BadACE(ACE_doy,P8)
+
+#Remove bad data from WIND
+def BadWIND(DOY,v,T):
+    DOY_v = list(DOY)
+    DOY_T = list(DOY)
+    v = list(v)
+    T = list(T)
+    N = len(DOY)
+    index_v = []
+    index_T = []
+    for i in range(N):
+        if v[i]==99999.9:
+            index_v.append(i)
+        if T[i]>=3:
+            index_T.append(i)
+    j = 0
+    for i in range(len(index_v)):
+        index_v[i] -= j
+        DOY_v.pop(index_v[i])
+        v.pop(index_v[i])
+        j += 1
+    j = 0
+    for i in range(len(index_T)):
+        index_T[i] -= j
+        DOY_T.pop(index_T[i])
+        T.pop(index_T[i])
+        j += 1
+    return tuple(DOY_v),tuple(v),tuple(DOY_T),tuple(T)
+
+DOY_v,v,DOY_T,T = BadWIND(WIND_doy,v,T)
+
+
+#Plotting
+fig, axs = plt.subplots(7, 1, sharex=True, height_ratios=[4,1,1,1,1,1,1])
+fig.subplots_adjust(hspace=0) # Remove horizontal space between axes
+
+axs[0].plot([],[],' ', label='ACE/EPAM')
+axs[0].plot(ACE_doy_1,P1, label='0.047-0.068 MeV')
+axs[0].plot(ACE_doy_2,P2, label='0.068-0.115 MeV')
+axs[0].plot(ACE_doy_3,P3, label='0.115-0.195 MeV')
+axs[0].plot(ACE_doy_4,P4, label='0.195-0.321 MeV')
+axs[0].plot(ACE_doy_5,P5, label='0.321-0.580 MeV')
+axs[0].plot(ACE_doy_6,P6, label='0.587-1.06 MeV')
+axs[0].plot(ACE_doy_7,P7, label='1.06-1.90 MeV')
+axs[0].plot(ACE_doy_8,P8, label='1.90-4.80 MeV')
+axs[0].plot([],[],' ', label='GOES/EPS')
+axs[0].plot(SEPAM_doy,P9, label='5.00-7.23 MeV')
+axs[0].plot(SEPAM_doy,P10, label='7.23-10.46 MeV')
+axs[0].plot(SEPAM_doy,P11, label='10.46-15.12 MeV')
+axs[0].plot(SEPAM_doy,P12, label='15.12- 21.87 MeV')
+axs[0].plot(SEPAM_doy,P13, label='21.87-31.62 MeV')
+axs[0].plot(SEPAM_doy,P14, label='31.62-45.73 MeV')
+axs[0].plot(SEPAM_doy,P15, label='45.73-66.13 MeV')
+axs[0].plot(SEPAM_doy,P16, label='66.13-95.64 MeV')
+axs[0].plot(SEPAM_doy,P17, label='95.64-138.3  MeV')
+axs[0].plot(SEPAM_doy,P18, label='138.3-200.0  MeV')
+axs[0].plot(SEPAM_doy,P19, label='200.0-289.2  MeV')
+axs[0].set_ylabel('Flux de protons p/(cm$^{2}$ s sr MeV)')
+axs[0].set_xlim(55,62)
+axs[0].set_yscale('log')
+axs[1].plot(DOY_v,v,c='k')
+axs[1].set_ylabel('Velocitat [km/s]')
+axs[2].plot(DOY_T,T,c='k')
+axs[2].set_ylabel('T [$10^5$ K]')
+axs[3].plot(WIND_doy,d,c='k')
+axs[3].set_ylabel('Densitat [cm$^{-3}$]')
+axs[4].plot(WIND_doy,Bx,c='k')
+axs[4].set_ylabel("$B_x$ [nT]")
+axs[5].plot(WIND_doy,By,c='k')
+axs[5].set_ylabel("$B_y$ [nT]")
+axs[6].plot(WIND_doy,Bz,c='k')
+axs[6].set_ylabel("$B_z$ [nT]")
+axs[6].set_xlabel("Dia de l'any 2014")
+
+axs[0].legend(bbox_to_anchor=(1, 0.84), loc='upper left')
+
+fig.set_size_inches(13, 20)
+fig.set_dpi(1000)
+
+pathname='/Users/rogerprat/Documents/SynologyDrive/Màster/Space-based astronomy and Space Weather/2-Meteo/Esdeveniment/plot.pdf'
+fig.savefig(pathname, bbox_inches='tight')
+
+#Interplanetary shock passage
+IPS_P = 58.658
+
+axs[0].axvline(x=IPS_P,color='gray',linestyle='dashed')
+axs[1].axvline(x=IPS_P,color='gray',linestyle='dashed')
+axs[2].axvline(x=IPS_P,color='gray',linestyle='dashed')
+axs[3].axvline(x=IPS_P,color='gray',linestyle='dashed')
+axs[4].axvline(x=IPS_P,color='gray',linestyle='dashed')
+axs[5].axvline(x=IPS_P,color='gray',linestyle='dashed')
+axs[6].axvline(x=IPS_P,color='gray',linestyle='dashed')
+
+pathname='/Users/rogerprat/Documents/SynologyDrive/Màster/Space-based astronomy and Space Weather/2-Meteo/Esdeveniment/plot_IPSP.png'
+fig.savefig(pathname, bbox_inches='tight')
+
+hora = int((IPS_P - 58)*24)
+minut = int(((IPS_P - 58)*24 - hora)*60)
+segon = int((((IPS_P - 58)*24 - hora)*60 - minut)*60)
+data = '27-02-2014 ' + str(hora) + ':' + str(minut) + ':' + str(segon)
+print('Passatge del xoc interplanetari: ', data)
+print("Dia de l'any: ", IPS_P)
+
+
+
