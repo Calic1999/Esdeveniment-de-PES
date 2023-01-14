@@ -7,6 +7,9 @@ Created on Mon Dec 26 12:50:19 2022
 """
 
 import matplotlib.pyplot as plt
+from importlib import reload
+import numpy as np
+import math
 
 mp = 1.67262192369E-27
 kB = 1.3806504E-23
@@ -180,7 +183,7 @@ axs[6].set_xlabel("Dia de l'any 2014")
 axs[0].legend(bbox_to_anchor=(1, 0.84), loc='upper left')
 
 fig.set_size_inches(13, 20)
-fig.set_dpi(1000)
+#fig.set_dpi(1000)
 
 pathname='/Users/rogerprat/Documents/SynologyDrive/Màster/Space-based astronomy and Space Weather/2-Meteo/Esdeveniment/plot.pdf'
 fig.savefig(pathname, bbox_inches='tight')
@@ -195,9 +198,9 @@ axs[3].axvline(x=IPS_P,color='gray',linestyle='dashed')
 axs[4].axvline(x=IPS_P,color='gray',linestyle='dashed')
 axs[5].axvline(x=IPS_P,color='gray',linestyle='dashed')
 axs[6].axvline(x=IPS_P,color='gray',linestyle='dashed')
-
-pathname='/Users/rogerprat/Documents/SynologyDrive/Màster/Space-based astronomy and Space Weather/2-Meteo/Esdeveniment/plot_IPSP.png'
-fig.savefig(pathname, bbox_inches='tight')
+plt.show()
+#pathname='/Users/rogerprat/Documents/SynologyDrive/Màster/Space-based astronomy and Space Weather/2-Meteo/Esdeveniment/plot_IPSP.png'
+#fig.savefig(pathname, bbox_inches='tight')
 
 hora = int((IPS_P - 58)*24)
 minut = int(((IPS_P - 58)*24 - hora)*60)
@@ -207,4 +210,177 @@ print('Passatge del xoc interplanetari: ', data)
 print("Dia de l'any: ", IPS_P)
 
 
+def FindShockE(PF,DOY):
+    for i in DOY:
+        if i>IPS_P:
+            get_index = DOY.index(i)
+            break
+    E = PF[get_index]
+    return E
+
+Energies = [0.0575,
+            0.0915,
+            0.155,
+            0.258,
+            0.4505,
+            0.8235,
+            1.48,
+            3.35,
+            6.115,
+            8.845,
+            12.79,
+            18.495,
+            26.745,
+            38.675,
+            55.93,
+            80.885,
+            116.97,
+            169.15,
+            244.6]
+
+
+
+Intensitat = []
+Intensitat.append(FindShockE(P1,ACE_doy_1))
+Intensitat.append(FindShockE(P2,ACE_doy_2))
+Intensitat.append(FindShockE(P3,ACE_doy_3))
+Intensitat.append(FindShockE(P4,ACE_doy_4))
+Intensitat.append(FindShockE(P5,ACE_doy_5))
+Intensitat.append(FindShockE(P6,ACE_doy_6))
+Intensitat.append(FindShockE(P7,ACE_doy_7))
+Intensitat.append(FindShockE(P8,ACE_doy_8))
+Intensitat.append(FindShockE(P9,SEPAM_doy))
+Intensitat.append(FindShockE(P10,SEPAM_doy))
+Intensitat.append(FindShockE(P11,SEPAM_doy))
+Intensitat.append(FindShockE(P12,SEPAM_doy))
+Intensitat.append(FindShockE(P13,SEPAM_doy))
+Intensitat.append(FindShockE(P14,SEPAM_doy))
+Intensitat.append(FindShockE(P15,SEPAM_doy))
+Intensitat.append(FindShockE(P16,SEPAM_doy))
+Intensitat.append(FindShockE(P17,SEPAM_doy))
+Intensitat.append(FindShockE(P18,SEPAM_doy))
+Intensitat.append(FindShockE(P19,SEPAM_doy))
+
+#Regressió
+x = ([])
+y = ([])
+for i in Energies:
+    x = np.append(x,np.log(i))
+for i in Intensitat:
+    y = np.append(y,np.log(i))
+
+N = len(x)
+xquadrat = x**2
+sumadexquadrat = xquadrat.sum()
+Nsuma = sumadexquadrat*N
+sumadex = x.sum()
+sumadexalquadrat = sumadex**2
+
+Delta = Nsuma - sumadexalquadrat
+
+xy = x*y
+sumadexy = xy.sum()
+Nsumadexy = N*sumadexy
+sumadey = y.sum()
+xsumadey = x*sumadey
+sumaxsumay = xsumadey.sum()
+
+a2 = (Nsumadexy - sumaxsumay)/(Delta)
+
+sumaxquadratsumay = sumadexquadrat*sumadey
+xsumadexy = x*sumadexy
+sumaxsumaxy = xsumadexy.sum()
+
+b2 = (sumaxquadratsumay - sumaxsumaxy)/(Delta)
+
+recta = y - a2*x - b2
+rectaquadrat = recta**2
+suma = rectaquadrat.sum()
+dyreg = (suma/(N - 2))**(1/2)
+
+arrela = (N/Delta)**(1/2)
+arrelb = (sumadexquadrat/Delta)**(1/2)
+
+da2 = dyreg*arrela
+db2 = dyreg*arrelb
+
+xbarra = sumadex/N
+xmenysxbarra = x - xbarra
+xmenysxbarraalquadrat = xmenysxbarra**2
+sumaxmenysxbarraalquadrat = xmenysxbarraalquadrat.sum()
+
+ybarra = sumadey/N
+ymenysybarra = y - ybarra
+ymenysybarraalquadrat = ymenysybarra**2
+sumaymenysybarraalquadrat = ymenysybarraalquadrat.sum()
+
+
+factor=0
+for i in range(0,N):
+    factor = factor + (x[i]-xbarra)*(y[i]-ybarra)
+
+r = factor/(np.sqrt(sumaxmenysxbarraalquadrat*sumaymenysybarraalquadrat))
+R = r**2
+
+dif=1-R
+def orderOfMagnitude(number):
+    return math.floor(math.log(number, 10))
+order = orderOfMagnitude(dif)
+
+def ajust(z):
+    return a2*z + b2
+
+oa=orderOfMagnitude(da2)
+ob=orderOfMagnitude(db2)
+
+ar2 = a2.round(abs(oa))
+br2 = b2.round(abs(ob))
+dar2 = da2.round(abs(oa))
+dbr2 = db2.round(abs(ob))
+
+dR2 = R.round(abs(order)+1)
+print('')
+print("Ajust de l'índex espectral:")
+print('a =', ar2, ' ± ', dar2, ' b =', np.exp(br2), ' ± ', np.exp(dbr2))
+#print('dyreg = ',dyreg)
+print('R^2 =', dR2)
+print('')
+
+plt=reload(plt)
+plt.figure()
+plt.scatter(Energies,Intensitat,label='Dades',c='k')
+plt.yscale('log')
+plt.xscale('log')
+plt.xlabel('E (MeV)')
+plt.ylabel('Intensitat p/(cm$^{2}$ s sr MeV)')
+plt.annotate("$I = (221.4\pm1.2) E^{-2.16\pm0.06}$\n $R^2$=0.987",(0.11,0.01))
+plt.grid(True)
+
+
+
+
+#DSA theory
+nd = 42.3
+nu = 17
+dnu = 0.9
+dnd = 1.1
+r = nd/nu
+dr = np.sqrt((dnd/nu)**2+(nd/(nu**2))**2*dnu**2)
+q=(3*r)/(r-1)
+dq = 3*dr*(1-r)/((r-1)**2)
+gamma = (1-q)/2
+dgamma = -dq/2
+print('Acceleració difusiva del xoc:')
+print(round(gamma,2), ' ± ', round(dgamma,2))
+print('')
+
+def ajust2(z):
+    return gamma*z + 5
+
+plt.plot(Energies, [np.exp(ajust2(np.log(i))) for i in Energies],label='ADX', color="blue")
+plt.plot(Energies, [np.exp(ajust(np.log(i))) for i in Energies],label='Ajust', color="gray")
+plt.legend(loc='upper right')
+#fig.set_dpi(1000)
+#pathname='/Users/rogerprat/Documents/SynologyDrive/Màster/Space-based astronomy and Space Weather/2-Meteo/Esdeveniment/ajust.pdf'
+#plt.savefig(pathname)
 
